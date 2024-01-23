@@ -52,4 +52,46 @@ function registerApiPhotoGet() {
   ]);
 }
 add_action('rest_api_init', 'registerApiPhotoGet');
+
+function apiPhotosGet($request) {
+  $_total = sanitize_text_field($request['_total']) ?: 6;
+  $_page = sanitize_text_field($request['_page']) ?: 1;
+  $_user = sanitize_text_field($request['_user']) ?: 0;
+
+  if (!is_numeric($_user)) {
+    $user = get_user_by('login', $_user);
+    if (!$user) {
+      $response = new WP_Error('error', 'Usuário não encontrado', ['status' => 404]);
+      return rest_ensure_response($response);
+    }
+    $_user = $user->ID;
+  }
+
+  $args = [
+    'post_type' => 'post',
+    'author' => $_user,
+    'post_per_page' => $_total,
+    'paged' => $_page,
+  ];
+
+  $query = new WP_Query($args);
+  $posts = $query->posts;
+
+  $photos = [];
+  if($posts) {
+    foreach ($posts as $post) {
+      $photos[] = photoData($post);
+    }
+  }
+
+  return rest_ensure_response($photos);
+}
+
+function registerApiPhotosGet() {
+  register_rest_route('api', '/photo', [
+    'methods' => WP_REST_Server::READABLE,
+    'callback' => 'apiPhotosGet',
+  ]);
+}
+add_action('rest_api_init', 'registerApiPhotosGet');
 ?>
