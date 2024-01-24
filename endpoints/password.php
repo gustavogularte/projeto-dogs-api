@@ -32,4 +32,37 @@ function registerApiPasswordLost() {
   ]);
 }
 add_action('rest_api_init', 'registerApiPasswordLost');
+
+//Password reset
+
+function apiPasswordReset($request) {
+  $login = $request['login'];
+  $password = $request['password'];
+  $key = $request['key'];
+  $user = get_user_by('login', $login);
+
+  if (empty($user)) {
+    $response = new WP_Error('error', 'Usuário não existe', ['status' => 401]);
+    return rest_ensure_response($response);
+  }
+
+  $checkKey = check_password_reset_key($key, $login);
+
+  if (is_wp_error($checkKey)) {
+    $response = new WP_Error('error', 'Token expirado', ['status' => 401]);
+    return rest_ensure_response($response);
+  }
+
+  reset_password($user, $password);
+
+  return rest_ensure_response('Senha alterada');
+}
+
+function registerApiPasswordReset() {
+  register_rest_route('api', '/password/Reset', [
+    'methods' => WP_REST_Server::CREATABLE,
+    'callback' => 'apiPasswordReset',
+  ]);
+}
+add_action('rest_api_init', 'registerApiPasswordReset');
 ?>
